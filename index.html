@@ -196,6 +196,79 @@ body.admin-mode .admin-trigger{display:block}
 </div>
 
 <script>
+  window.addEventListener("load",()=>{
+  const API="AIzaSyCMlI35rSulU5Zn_YgkhD8g6cChPsvfSO4";
+  const DB="https://bem-dito-artesanal-default-rtdb.firebaseio.com/disponibilidade.json";
+  const EMAIL="bemdito.sorvete@gmail.com";
+  let token=sessionStorage.getItem("bemDitoFirebaseToken")||"";
+
+  function aplicarOnline(d){
+    if(!d)return;
+    Object.entries(d.mapa||{}).forEach(([id,v])=>{
+      if(produtos[id])produtos[id].disponivel=v!==false;
+    });
+    gruposDisponibilidade.forEach(g=>{
+      const a=(d.listasMapa||{})[g.chave];
+      if(Array.isArray(a))a.forEach((v,i)=>{
+        if(g.itens[i])g.itens[i].disponivel=v!==false;
+      });
+    });
+    renderCatalog();
+    bindProductButtons();
+  }
+
+  async function carregarOnline(){
+    try{
+      const r=await fetch(DB);
+      if(r.ok)aplicarOnline(await r.json());
+    }catch(e){}
+  }
+
+  carregarOnline();
+  setInterval(carregarOnline,15000);
+
+  if(!document.body.classList.contains("admin-mode"))return;
+
+  const trigger=document.getElementById("adminTrigger");
+  const painel=document.getElementById("adminBackdrop");
+  const list=document.getElementById("adminList");
+  const status=document.getElementById("adminStatus");
+  const actions=document.querySelector(".admin-actions");
+  const salvar=document.getElementById("adminSave");
+  const baixar=document.getElementById("adminDownload");
+  const reset=document.getElementById("adminReset");
+  const nota=document.querySelector(".admin-note");
+
+  if(baixar)baixar.style.display="none";
+  if(nota)nota.innerHTML="<b>Painel online:</b> ligue ou desligue os itens e toque em <b>Salvar disponibilidade online</b>. A alteração será enviada ao site para todos os clientes.";
+  if(salvar)salvar.textContent="Salvar disponibilidade online";
+
+  function abrir(){
+    painel.classList.add("open");
+    painel.setAttribute("aria-hidden","false");
+    document.body.classList.add("modal-open");
+  }
+
+  function linha(nome,ativo,attrs){
+    return `<div class="admin-item">
+      <div class="admin-item-main"><b>${nome}</b><small>${ativo?"Disponível":"Indisponível"}</small></div>
+      <label class="admin-switch">
+        <input type="checkbox" ${attrs} ${ativo?"checked":""}>
+        <span class="admin-slider"></span>
+      </label>
+    </div>`;
+  }
+
+  function montar(){
+    let h="";
+    ordemCategorias.forEach(cat=>{
+      const itens=Object.entries(produtos).filter(([,p])=>p.categoria===cat);
+      if(!itens.length)return;
+      h+=`<div style="font-weight:900;color:#a35b34;margin:18px 2px 2px">Produtos — ${cat}</div>`;
+      h+=itens.map(([id,p])=>linha(p.nome,p.disponivel!==false,`data-admin-product="${id}"`)).join("");
+    });
+    gruposDisponibilidade.forEach(g=>{
+      h+=`<div style="font-weight:900;color:#a35b34;margin:18px 2px 2px">${g.titulo
 // === ÁREA EDITÁVEL DO CARDÁPIO: PRODUTOS / PREÇOS / DISPONIBILIDADE ===
 // ============================================================
 // BEM DITO ARTESANAL — ARQUIVO FÁCIL DE EDITAR
